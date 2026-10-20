@@ -1,0 +1,13 @@
+# ==============================================================================
+# Docker Compose Override para Desarrollo Local
+# ==============================================================================
+# Este archivo es leído AUTOMÁTICAMENTE por Docker Compose cuando ejecutas
+# 'docker compose up' en tu computadora local.
+# Mapea el puerto 8000 hacia localhost para que puedas abrir http://localhost:8000/docs
+# En Coolify no se utiliza porque Coolify invoca directamente 'docker-compose.yml'.
+# ==============================================================================
+
+services:
+  fastapi:
+    ports:
+      - "${HOST_PORT:-8000}:8000"
