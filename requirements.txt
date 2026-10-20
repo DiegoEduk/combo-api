@@ -1,0 +1,17 @@
+# Framework Web y Servidor ASGI
+fastapi>=0.110.0,<0.120.0
+uvicorn[standard]>=0.29.0,<0.35.0
+pydantic>=2.6.0,<3.0.0
+pydantic-settings>=2.2.0,<3.0.0
+email-validator>=2.0.0
+python-multipart>=0.0.9
+
+# Base de datos relacional (PostgreSQL) y ORM
+sqlalchemy>=2.0.28,<3.0.0
+psycopg[binary]>=3.1.18,<4.0.0
+
+# Caché en memoria (Redis)
+redis>=5.0.3,<6.0.0
+
+# Almacenamiento de objetos S3 compatible (MinIO)
+minio>=7.2.5,<8.0.0

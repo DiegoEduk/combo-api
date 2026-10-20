@@ -1,0 +1,33 @@
+# Entorno virtual
+.venv/
+env/
+venv/
+ENV/
+
+# Byte-compiled / optimizados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Variables de entorno con credenciales
+.env
+
+# Base de datos local SQLite si se usara
+*.sqlite3
+*.db
+
+# IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.docker/
+
+# MinIO data local si se montara en local
+minio_local_data/
+
+prompt/
+prompt

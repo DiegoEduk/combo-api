@@ -1,0 +1,122 @@
+# ==============================================================================
+# Docker Compose para despliegue en Coolify / Producción local
+# ==============================================================================
+# Todos los servicios comparten la red interna 'combo_network'.
+# Solo el servicio 'fastapi' expone puertos públicamente; PostgreSQL, Redis y
+# MinIO quedan aislados dentro de la red interna protegidos de Internet.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Servicio 1: FastAPI (Punto de entrada principal a la aplicación)
+  # ----------------------------------------------------------------------------
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: combo_fastapi
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=${DEBUG:-false}
+      - PROJECT_NAME=${PROJECT_NAME:-ComboAPI - FastAPI Modular}
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-combo_user}:${POSTGRES_PASSWORD:-combo_super_password}@postgres:5432/${POSTGRES_DB:-combo_db}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_CACHE_TTL=${REDIS_CACHE_TTL:-60}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minio_admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minio_super_secret_password}
+      - MINIO_BUCKET=${MINIO_BUCKET:-img}
+      - MINIO_BUCKET_ARCHIVOS=${MINIO_BUCKET_ARCHIVOS:-archivos}
+      - MINIO_SECURE=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - combo_network
+
+  # ----------------------------------------------------------------------------
+  # Servicio 2: PostgreSQL (Base de datos relacional)
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: combo_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-combo_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-combo_super_password}
+      POSTGRES_DB: ${POSTGRES_DB:-combo_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-combo_user} -d ${POSTGRES_DB:-combo_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - combo_network
+    # No se publican puertos ('ports') hacia el host/Internet para mantenerlo privado.
+
+  # ----------------------------------------------------------------------------
+  # Servicio 3: Redis (Sistema de Caché en memoria)
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: combo_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - combo_network
+    # No se publican puertos ('ports') hacia el host/Internet.
+
+  # ----------------------------------------------------------------------------
+  # Servicio 4: MinIO (Almacenamiento de objetos S3 compatible para imágenes y archivos)
+  # Se utiliza la imagen segura y pública de Chainguard MinIO
+  # ----------------------------------------------------------------------------
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: combo_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_super_secret_password}
+    volumes:
+      - minio_data:/data
+    networks:
+      - combo_network
+    # No se publican puertos ('ports') hacia el host/Internet.
+
+# ==============================================================================
+# Volúmenes persistentes para evitar pérdida de datos tras reinicio de contenedores
+# ==============================================================================
+volumes:
+  postgres_data:
+    name: combo_postgres_data
+  redis_data:
+    name: combo_redis_data
+  minio_data:
+    name: combo_minio_data
+
+# ==============================================================================
+# Red privada interna compartida
+# ==============================================================================
+networks:
+  combo_network:
+    name: combo_network
+    driver: bridge
